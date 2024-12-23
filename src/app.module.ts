@@ -10,11 +10,13 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { SessionSerializer } from './guards/Serializer';
 import { UserService } from './services/user.service';
+import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     MongooseModule.forRoot(
       'mongodb+srv://Khelan05:KrxRwjRwkhgYUdwh@cluster0.c6y9phd.mongodb.net/bh?retryWrites=true&w=majority',
     ),
+    ConfigModule.forRoot({ isGlobal: true }),
     MailerModule.forRoot({
       transport: {
         service: 'gmail', // Gmail SMTP server address
