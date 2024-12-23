@@ -8,12 +8,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super({
       clientID: process.env.CLIENT_ID || '', // Replace with your Google Client ID
       clientSecret: process.env.CLIENT_SECRET || '', // Replace with your Google Client Secret
-      callbackURL:
-        'https://server-five-topaz.vercel.app/api/auth/google/redirect',
+      callbackURL: process.env.CALLBACK_URL,
       scope: ['email', 'profile'],
     });
-  } 
- 
+  }
+
   async validate(
     accessToken: string,
     refreshToken: string,
