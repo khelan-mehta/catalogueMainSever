@@ -11,6 +11,9 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { SessionSerializer } from './guards/Serializer';
 import { UserService } from './services/user.service';
 import { ConfigModule } from '@nestjs/config';
+import { BountyController } from './controllers/bounty.controller';
+import { BountyModule } from './modules/bounty.module';
+import { BountyService } from './services/bounty.service';
 @Module({
   imports: [
     MongooseModule.forRoot(
@@ -33,8 +36,9 @@ import { ConfigModule } from '@nestjs/config';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your_jwt_secret', // Use environment variables for production
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '30d' },
     }),
+    BountyModule,
   ],
   controllers: [AuthController],
   providers: [

@@ -10,12 +10,12 @@ async function bootstrap() {
   app.use(passport.initialize());
 
   // Enable CORS for a specific frontend URL
-  app.enableCors(/**{
+  app.enableCors({
     origin: 'https://bh-frontend-jbps.vercel.app', // Specific frontend URL
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Common HTTP methods
     allowedHeaders: 'Content-Type,Authorization', // Specific headers
     credentials: true, // Allow credentials (e.g., cookies)
-  } */);
+  });
 
   app.use(
     session({

@@ -76,33 +76,41 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleLoginCallback(@Req() req, @Res() res: Response) {
     const googleUser = req.user; // This will contain Google profile info
+    const redirectBaseUrl = process.env.HOME_URL_2;
 
+    // Try to find an existing user by email
     let user = await this.authService.findUserByEmail(googleUser.email);
 
     if (user) {
-      // Link Google login info to existing account
+      // Link Google login info to the existing account
       await this.authService.linkGoogleAccount(user, googleUser);
+
+      // Check if the user has a username, implying they are registered
+      if (user.username) {
+        user.isRegistered = true; // Set isRegistered to true if the user has a username
+        await user.save(); // Save the updated user
+      }
     } else {
-      // Check if the user is not registered before creating
+      // Check if the user is not registered before creating a new account
       if (!googleUser.isRegistered) {
         // Redirect with a message query parameter
         return res.redirect(
-          'https://bh-frontend-jbps.vercel.app/auth/register?message=kindly%20register%20first',
+          `${redirectBaseUrl}/auth/register?message=kindly%20register%20first`,
         );
       }
 
-      // Create a new user with Google info if registered
+      // Create a new user with Google info if the user is registered
       user = await this.authService.createUserWithGoogle(googleUser);
     }
 
-    // Generate access token
+    // Generate an access token for the user
     const accessToken = this.authService.generateAccessToken(user);
 
     // Save the access token in the database
     await this.authService.saveAccessToken(user.id, await accessToken);
 
-    // Redirect to the appropriate page
-    const redirectUrl = `https://bh-frontend-jbps.vercel.app/dashboard?access_token=${await accessToken}&userId=${user.id}`;
+    // Redirect to the appropriate page with the access token and user ID
+    const redirectUrl = `${redirectBaseUrl}/dashboard?access_token=${await accessToken}&userId=${user.id}`;
     return res.redirect(redirectUrl);
   }
 

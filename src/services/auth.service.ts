@@ -33,6 +33,7 @@ export class AuthService {
       { $set: { accessToken } }, // Use $set to update the accessToken field
     );
   }
+  
 
   async findUserByEmail(email: string): Promise<User | null> {
     return this.userModel.findOne({ email }).exec();
