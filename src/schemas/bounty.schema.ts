@@ -13,6 +13,7 @@ export interface Bounty extends Document {
   acceptedId?: string;
   isSuspended?: boolean;
   creatorDetails?: string;
+  createdAt?: Date; // Explicitly define createdAt
 }
 
 // Bounty Schema
@@ -28,6 +29,7 @@ export const BountySchema = new Schema<Bounty>({
   acceptedId: { type: String, required: false },
   isSuspended: { type: Boolean, default: false },
   creatorDetails: { type: String, required: false },
+  createdAt: { type: Date, default: Date.now }, // Add createdAt with default value
 });
 
 export const BountyModel = model<Bounty>('Bounty', BountySchema);

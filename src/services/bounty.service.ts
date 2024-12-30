@@ -13,6 +13,12 @@ export class BountyService {
     @InjectModel('Bounty') private readonly bountyModel: Model<Bounty>,
   ) {}
 
+  async find(criteria: any): Promise<Bounty[]> {
+    console.log(await this.bountyModel.find(criteria).exec());
+
+    return await this.bountyModel.find(criteria).exec();
+  }
+
   async getBountyById(id: string): Promise<Bounty> {
     // Check if the ID is a valid ObjectId
     if (!Types.ObjectId.isValid(id)) {
@@ -42,15 +48,17 @@ export class BountyService {
     return this.bountyModel.find({ listedUsers: { $in: [userId] } }).exec();
   }
 
-  async getAllBounties(page: number, limit: number): Promise<Bounty[]> {
-    return this.bountyModel
+  async getAllBounties(
+    page: number,
+    limit: number,
+    options: { sort?: any } = {},
+  ): Promise<Bounty[]> {
+    const skip = (page - 1) * limit;
+    return await this.bountyModel
       .find()
-      .skip((page - 1) * limit)
+      .sort(options.sort || {}) // Sort by the provided field, default is no sort
+      .skip(skip)
       .limit(limit)
-      .populate({
-        path: 'createdBy', // Populating the createdBy field with User data
-        select: 'username', // Only fetch the username field from the User model
-      })
       .exec();
   }
 

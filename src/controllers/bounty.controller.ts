@@ -13,6 +13,7 @@ import {
   Res,
   OnModuleInit,
   UseGuards,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { BountyService } from '../services/bounty.service';
 import { Bounty } from '../schemas/bounty.schema';
@@ -64,6 +65,7 @@ export class BountyController {
 
       // Fetch the user who created the bounty
       const user = await this.userService.getUserById(bounty.createdBy);
+      const user2 = await this.userService.getUserById(id);
 
       // Fetch details of listed users
       const listedUsersDetails = await Promise.all(
@@ -83,7 +85,7 @@ export class BountyController {
         ...bounty.toObject(),
         creatorDetails: user ? user.username : null,
         listedUsers: listedUsersDetails,
-        newAccessToken: res.locals.newAccessToken, // Add the new access token
+        newAccessToken: user2.accessToken, // Add the new access token
       });
 
       // Return bounty details with the new access token included in the response
@@ -91,7 +93,7 @@ export class BountyController {
         ...bounty.toObject(),
         creatorDetails: user ? user.username : null,
         listedUsers: listedUsersDetails,
-        newAccessToken: user.accessToken, // Add the new access token
+        newAccessToken: user2.accessToken, // Add the new access token
       });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -104,30 +106,62 @@ export class BountyController {
   }
 
   // Get all bounties
-  @Get('')
+  @Get(':userId/all/fetch')
   async getAllBounties(
+    @Param('userId') userId: string, // Extract userId from route parameters
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ): Promise<{ bounties: Bounty[]; totalBounties: number }> {
     try {
-      const bounties = await this.bountyService.getAllBounties(page, limit);
+      // Fetch the user to get their university
+      const requestingUser = await this.userService.getUserById(userId);
+
+      if (!requestingUser || requestingUser.isSuspended) {
+        throw new NotFoundException('User not found or account is suspended');
+      }
+
+      const university = requestingUser.university;
+
+      if (!university) {
+        throw new NotFoundException('User does not belong to a university');
+      }
+
+      // Fetch bounties sorted by the latest `createdAt` date
+      const bounties = await this.bountyService.getAllBounties(page, limit, {
+        sort: { createdAt: -1 },
+      });
+
       const totalBounties = await this.bountyService.getTotalBounties();
 
       if (!bounties || bounties.length === 0) {
         throw new NotFoundException('No bounties found');
       }
 
+      // Add creator details and filter bounties based on the university match
       const bountiesWithCreatorDetails = await Promise.all(
         bounties.map(async (bounty) => {
-          const user = await this.userService.getUserById(bounty.createdBy);
+          const creator = await this.userService.getUserById(bounty.createdBy);
+
+          // Ensure the creator is not suspended and belongs to the same university
+          const belongsToSameUniversity =
+            creator &&
+            !creator.isSuspended &&
+            creator.university === university;
+
           return {
             ...bounty.toObject(),
-            creatorDetails: user ? user.username : null,
+            creatorDetails: creator ? creator.username : null,
+            belongsToSameUniversity,
           };
         }),
       );
 
-      return { bounties: bountiesWithCreatorDetails, totalBounties };
+      // Filter out bounties where the creator does not belong to the same university
+      const filteredBounties = bountiesWithCreatorDetails.filter(
+        (bounty) => bounty.belongsToSameUniversity,
+      );
+
+      return { bounties: filteredBounties, totalBounties };
     } catch (error) {
       throw error;
     }
@@ -168,6 +202,7 @@ export class BountyController {
       throw new BadRequestException(`User with ID ${id} not found`);
     }
 
+    // Include `createdAt` with the current timestamp
     const newBounty = await this.bountyService.createBounty({
       createdBy: id,
       title,
@@ -180,6 +215,7 @@ export class BountyController {
       status: 'open',
       acceptedId: null,
       isSuspended: false,
+      createdAt: new Date(), // Add createdAt field
     });
 
     this.bountyUpdateService.emitUpdate(newBounty);
@@ -263,6 +299,97 @@ export class BountyController {
       return [createdBounties, listedBounties, acceptedBounties];
     } catch (error) {
       throw error;
+    }
+  }
+
+  @Get('filters/filter/apply')
+  async filterBounties(
+    @Query('userId') userId: string,
+    @Query('days') days?: string,
+    @Query('loot') loot?: string,
+    @Query('keywords') keywords?: string,
+  ) {
+    try {
+      // Fetch the requesting user to get their university
+      const requestingUser = await this.userService.getUserById(userId);
+
+      if (!requestingUser || requestingUser.isSuspended) {
+        throw new NotFoundException('User not found or account is suspended.');
+      }
+
+      const university = requestingUser.university;
+
+      if (!university) {
+        throw new NotFoundException('User does not belong to a university.');
+      }
+
+      const filterCriteria: any = {};
+
+      // Add `days` filter if provided
+      if (days) {
+        const exactDays = parseInt(days, 10);
+        if (isNaN(exactDays) || exactDays <= 0) {
+          throw new BadRequestException('Invalid "days" filter value.');
+        }
+        filterCriteria.days = exactDays; // Match exactly this number of days
+      }
+
+      // Add `loot` filter if provided
+      if (loot) {
+        const minLoot = parseInt(loot, 10);
+        if (isNaN(minLoot) || minLoot <= 0) {
+          throw new BadRequestException('Invalid "loot" filter value.');
+        }
+        filterCriteria.loot = { $gte: minLoot };
+      }
+
+      // Add `keywords` filter if provided
+      if (keywords) {
+        const keywordArray = keywords.split(',');
+        filterCriteria.title = {
+          $regex: keywordArray.join('|'),
+          $options: 'i',
+        };
+      }
+
+      // Fetch bounties based on filter criteria
+      const bounties = await this.bountyService.find(filterCriteria);
+
+      if (!bounties || bounties.length === 0) {
+        throw new NotFoundException(
+          'No bounties found for the applied filters.',
+        );
+      }
+
+      // Filter bounties based on the user's university
+      const bountiesWithCreatorDetails = await Promise.all(
+        bounties.map(async (bounty) => {
+          const creator = await this.userService.getUserById(bounty.createdBy);
+
+          const belongsToSameUniversity =
+            creator &&
+            !creator.isSuspended &&
+            creator.university === university;
+
+          return {
+            ...bounty.toObject(),
+            creatorDetails: creator ? creator.username : null,
+            belongsToSameUniversity,
+          };
+        }),
+      );
+
+      // Filter out bounties that do not belong to the same university
+      const filteredBounties = bountiesWithCreatorDetails.filter(
+        (bounty) => bounty.belongsToSameUniversity,
+      );
+
+      return { success: true, data: filteredBounties };
+    } catch (error) {
+      console.error('Error filtering bounties:', error);
+      throw new InternalServerErrorException(
+        'Failed to fetch filtered bounties.',
+      );
     }
   }
 }

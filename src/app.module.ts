@@ -14,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
 import { BountyController } from './controllers/bounty.controller';
 import { BountyModule } from './modules/bounty.module';
 import { BountyService } from './services/bounty.service';
+import { ApplicationModule } from './modules/application.module';
 @Module({
   imports: [
     MongooseModule.forRoot(
@@ -24,8 +25,8 @@ import { BountyService } from './services/bounty.service';
       transport: {
         service: 'gmail', // Gmail SMTP server address
         auth: {
-          user: 'khelan05@gmail.com', // Sender's Gmail email address
-          pass: 'pyys zvpl aqbk wokz', // Sender's Gmail app password
+          user: 'bountyhunter20xx@gmail.com', // Sender's Gmail email address
+          pass: 'lwwo kkeu tmft womi', // Sender's Gmail app password
         },
         tls: {
           rejectUnauthorized: false, // Bypass SSL verification
@@ -39,6 +40,7 @@ import { BountyService } from './services/bounty.service';
       signOptions: { expiresIn: '30d' },
     }),
     BountyModule,
+    ApplicationModule,
   ],
   controllers: [AuthController],
   providers: [
