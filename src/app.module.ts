@@ -11,18 +11,15 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { SessionSerializer } from './guards/Serializer';
 import { UserService } from './services/user.service';
 import { ConfigModule } from '@nestjs/config';
-import { BountyController } from './controllers/bounty.controller';
-import { BountyModule } from './modules/bounty.module';
-import { BountyService } from './services/bounty.service';
-import { ApplicationModule } from './modules/application.module';
+
 @Module({
   imports: [
     MongooseModule.forRoot(
-      'mongodb+srv://Khelan05:KrxRwjRwkhgYUdwh@cluster0.c6y9phd.mongodb.net/bh?retryWrites=true&w=majority',
+      'mongodb+srv://Khelan05:KrxRwjRwkhgYUdwh@cluster0.c6y9phd.mongodb.net/fd?retryWrites=true&w=majority',
     ),
     ConfigModule.forRoot({ isGlobal: true }),
     MailerModule.forRoot({
-      transport: {
+      transport: { 
         service: 'gmail', // Gmail SMTP server address
         auth: {
           user: 'bountyhunter20xx@gmail.com', // Sender's Gmail email address
@@ -39,8 +36,7 @@ import { ApplicationModule } from './modules/application.module';
       secret: process.env.JWT_SECRET || 'your_jwt_secret', // Use environment variables for production
       signOptions: { expiresIn: '30d' },
     }),
-    BountyModule,
-    ApplicationModule,
+    
   ],
   controllers: [AuthController],
   providers: [

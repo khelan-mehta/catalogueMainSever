@@ -1,4 +1,11 @@
+// user.schema.ts
 import { Schema, Document, model } from 'mongoose';
+
+export interface Operation {
+  imageUrl: string;       // Original image URL
+  description: string;
+  processedUrl?: string;  // Processed image URL (optional initially)
+}
 
 export interface User extends Document {
   email: string;
@@ -6,19 +13,18 @@ export interface User extends Document {
   googleId?: string;
   googleToken?: string;
   isGoogleUser?: boolean;
-  otp?: string; // OTP field
-  otpExpiresAt?: number; // OTP expiration time in milliseconds
+  otp?: string;
+  otpExpiresAt?: number;
   verifiedOtp?: boolean;
   accessToken?: string;
   username?: string;
   avatar?: string;
   university?: string;
   isRegistered?: boolean;
-  isSuspended?: boolean; // New suspended field
-  bounties?: string[]; // Array of bounty IDs
-  status?: string; // New status field
-  loot?: string; // Total earnings
-  gender?: string; // Gender field
+  isSuspended?: boolean;
+  status?: string;
+  gender?: string;
+  operations?: Operation[];
 }
 
 export const UserSchema = new Schema<User>({
@@ -35,11 +41,16 @@ export const UserSchema = new Schema<User>({
   avatar: { type: String, required: false },
   university: { type: String, required: false },
   isRegistered: { type: Boolean, default: false },
-  isSuspended: { type: Boolean, default: false }, // New suspended field
-  bounties: { type: [String], default: [] }, // Array of bounty IDs
-  status: { type: String, required: false }, // New status field
-  loot: { type: String, required: false }, // Total earnings
-  gender: { type: String, required: false }, // Gender field
+  isSuspended: { type: Boolean, default: false },
+  status: { type: String, required: false },
+  gender: { type: String, required: false },
+  operations: [
+    {
+      imageUrl: { type: String, required: true },
+      description: { type: String, required: true },
+      processedUrl: { type: String, required: false }, // New field
+    },
+  ],
 });
 
 export const UserModel = model<User>('User', UserSchema);

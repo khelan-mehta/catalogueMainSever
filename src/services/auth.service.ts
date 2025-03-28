@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'; // Import JwtService
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -24,6 +28,38 @@ export class AuthService {
     return token; // Ensure `JwtService` is correctly configured.
   }
 
+  // Method to add a new operation to a user's operations array
+  async addOperations(
+    userId: string,
+    imageUrl: string,
+    description: string,
+    processedUrl?: string,
+  ): Promise<any[]> {
+    const user = await this.userModel.findById(userId).exec();
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    user.operations = user.operations || [];
+    user.operations.push({ imageUrl, description, processedUrl });
+
+    await user.save();
+
+    return user.operations;
+  }
+
+  // Optional: Method to get all operations for a user (for debugging)
+  async getOperationss(userId: string) {
+    const user = await this.userModel.findById(userId).exec();
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return user.operations || [];
+  }
+
   async saveAccessToken(userId: string, accessToken: string): Promise<void> {
     console.log('SAVING: ', accessToken);
 
@@ -33,7 +69,6 @@ export class AuthService {
       { $set: { accessToken } }, // Use $set to update the accessToken field
     );
   }
-  
 
   async findUserByEmail(email: string): Promise<User | null> {
     return this.userModel.findOne({ email }).exec();
@@ -86,13 +121,7 @@ export class AuthService {
     };
   }
 
-  async register(
-    email: string,
-    encryptedPassword: string,
-    username: string,
-    avatar: string,
-    university: string,
-  ) {
+  async register(email: string, encryptedPassword: string, username: string) {
     try {
       const secretKey = 'your_private_key';
       const bytes = CryptoJS.AES.decrypt(encryptedPassword, secretKey);
@@ -121,8 +150,6 @@ export class AuthService {
         email,
         password: hashedPassword,
         username,
-        avatar,
-        university,
       });
       await newUser.save();
 

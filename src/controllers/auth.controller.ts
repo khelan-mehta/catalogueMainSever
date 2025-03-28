@@ -16,10 +16,25 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { GoogleAuthGuard } from '../guards/google-auth.guard';
 import { SendOtpDto } from 'src/dtos/sendOtps.dto';
 import { ResetPasswordDto, VerifyOtpDto } from 'src/dtos/verifyOtp.dto';
-import { log } from 'node:console';
+import aws from 'aws-sdk';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/services/user.service';
+import { v4 as uuidv4 } from 'uuid';
+
+
+
+
+const s3 = new S3Client({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: 'AKIAVVANBAJNCJ3LVIJC',
+    secretAccessKey: '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',
+  },
+});
+ 
 
 @Controller('auth')
 export class AuthController {
@@ -48,8 +63,6 @@ export class AuthController {
       email: string;
       password: string;
       username: string;
-      avatar: string;
-      university: string;
     },
   ) {
     try {
@@ -57,8 +70,7 @@ export class AuthController {
         registerDto.email,
         registerDto.password,
         registerDto.username,
-        registerDto.avatar,
-        registerDto.university,
+
       );
       return response; // Returning accessToken and userId
     } catch (error) {
@@ -95,7 +107,7 @@ export class AuthController {
       if (!googleUser.isRegistered) {
         // Redirect with a message query parameter
         return res.redirect(
-          `${redirectBaseUrl}/auth/register?message=kindly%20register%20first`,
+          `${redirectBaseUrl}/register?message=kindly%20register%20first&email=${googleUser.email}`,
         );
       }
 
@@ -119,7 +131,7 @@ export class AuthController {
   getProtectedResource() {
     return { message: 'This is a protected route' };
   }
-
+ 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async getUserInfo(@Param('id') userId: string, @Res() res: Response) {
@@ -168,6 +180,39 @@ export class AuthController {
     }
 
     return { message: 'OTP verified successfully' };
+  }
+
+  @Get('fetch-url/fetch')
+  async generateUploadURL() {
+    const bucketName = "direct-upload-s3-khelan";
+    const randomFileName = `image-${uuidv4()}.png`;
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: randomFileName,
+    });
+
+    const uploadURL = await getSignedUrl(s3, command, { expiresIn: 60 });
+    return { uploadURL };
+  }
+
+  @Post(':userId/update-data')
+  async updateData(
+    @Param('userId') userId: string,
+    @Body() body: { imageUrl: string; description: string; processedUrl?: string },
+  ) {
+    const { imageUrl, description, processedUrl } = body;
+
+    if (!imageUrl || !description) {
+      throw new Error('imageUrl and description are required');
+    }
+
+    const updatedOperations = await this.authService.addOperations(userId, imageUrl, description, processedUrl);
+
+    return {
+      message: 'Data updated successfully',
+      userId,
+      operations: updatedOperations,
+    };
   }
 
   // Endpoint for password reset
