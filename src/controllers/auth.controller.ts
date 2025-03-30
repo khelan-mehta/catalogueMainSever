@@ -10,6 +10,7 @@ import {
   HttpStatus,
   Res,
   Param,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -23,6 +24,7 @@ import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/services/user.service';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 
 
@@ -43,6 +45,13 @@ export class AuthController {
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
   ) {}
+
+  @Get('image')
+  async getImage(@Query('url') url: string, @Res() res) {
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    res.setHeader('Content-Type', response.headers['content-type']);
+    res.send(response.data);
+  } 
 
   @Post('login')
   async login(@Body() loginDto: { email: string; password: string }) {

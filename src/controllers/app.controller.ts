@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { AppService } from '../services/app.service';
+import axios from 'axios';
 
 @Controller()
 export class AppController {
@@ -9,4 +10,6 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  
 }
